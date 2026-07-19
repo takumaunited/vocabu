@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vocabu v39.5.22</title>
+    <title>Vocabu v39.5.23</title>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500&family=Outfit:wght@500;700&family=Kosugi&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -84,7 +84,7 @@
     <header class="app-header">
         <button id="header-back" class="btn-back" onclick="app.backToIndex()">Index</button>
         <div class="app-logo">Vocabu</div>
-        <div class="outer-version">v39.5.22</div>
+        <div class="outer-version">v39.5.23</div>
     </header>
 
     <div id="screen-index" class="screen">
@@ -387,9 +387,9 @@ class App {
 
     checkTyping() {
         if (this.isGivenUp) return;
+        // 連打対策：評価中またはすでに正解済みの場合は即リターン
         if (this.isEvaluating || this.hasAnsweredCorrectly) return; 
 
-        // 連打を完全に防ぐため、判定処理が走った瞬間に即座に評価中（ブロック状態）にする
         this.isEvaluating = true;
         
         const q = this.gameQueue[this.currentIndex];
@@ -422,9 +422,13 @@ class App {
             } else {
                 this.playSE('wrong');
             }
-            // 0.4秒後の演出完了タイミングで次の入力を受け付けるようにする
-            this.isEvaluating = false; 
         }, 400);
+
+        // 不正解時のウェイト演出中（0.4秒間）もエンター連打を完全にガードするため、
+        // 処理の最後ではなく、0.45秒後に次の入力を許可するように遅延を設定します
+        setTimeout(() => {
+            this.isEvaluating = false; 
+        }, 450);
     }
 
     giveUp() {
