@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vocabu v39.5.16</title>
+    <title>Vocabu v39.5.17</title>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500&family=Outfit:wght@500;700&family=Kosugi&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -84,7 +84,7 @@
     <header class="app-header">
         <button id="header-back" class="btn-back" onclick="app.backToIndex()">Index</button>
         <div class="app-logo">Vocabu</div>
-        <div class="outer-version">v39.5.16</div>
+        <div class="outer-version">v39.5.17</div>
     </header>
 
     <div id="screen-index" class="screen">
@@ -171,7 +171,7 @@ class App {
         const master = document.getElementById('master-input');
         master.addEventListener('input', () => {
             if (/[Ａ-Ｚａ-ｚ０-９！-～]/.test(master.value)) {
-                master.value = master.value.replace(/[Ａ-Ｚａ-ｚ０-9！-～]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+                master.value = master.value.replace(/[Ａ-Ｚａ-ｚ０-９！-～]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
             }
             if (this.difficulty === 'easy') this.syncEasyDisplay();
         });
