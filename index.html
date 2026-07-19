@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vocabu v39.5.19</title>
+    <title>Vocabu v39.5.21</title>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500&family=Outfit:wght@500;700&family=Kosugi&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -84,7 +84,7 @@
     <header class="app-header">
         <button id="header-back" class="btn-back" onclick="app.backToIndex()">Index</button>
         <div class="app-logo">Vocabu</div>
-        <div class="outer-version">v39.5.19</div>
+        <div class="outer-version">v39.5.21</div>
     </header>
 
     <div id="screen-index" class="screen">
@@ -150,7 +150,7 @@ class App {
         this.isGivenUp = false;
         this.hasAnsweredCorrectly = false;
         this.audioCtx = null;
-        this.isEvaluating = false; // 連打・重複判定防止用のフラグ
+        this.isEvaluating = false; 
         this.posFull = { "名":"名詞","動":"動詞","形":"形容詞","副":"副詞","前":"前置詞","接":"接続詞","代":"代名詞","助":"助動詞","連":"連語" };
         window.addEventListener('DOMContentLoaded', () => this.init());
     }
@@ -193,7 +193,6 @@ class App {
             }
             const ctx = this.audioCtx;
             
-            // パターンA固定 ＆ 音量を大きく調整（0.2 -> 0.4）
             if (type === 'correct') {
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
@@ -204,7 +203,7 @@ class App {
                 const now = ctx.currentTime;
                 osc.frequency.setValueAtTime(987.77, now);
                 osc.frequency.setValueAtTime(1318.51, now + 0.08);
-                gain.gain.setValueAtTime(0.4, now); // 音量を1.5〜2倍近くに大きく
+                gain.gain.setValueAtTime(0.4, now); 
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
                 
                 osc.start(now);
@@ -388,8 +387,7 @@ class App {
 
     checkTyping() {
         if (this.isGivenUp) return;
-        if (this.currentMode === 'timeattack' && this.hasAnsweredCorrectly) return;
-        if (this.isEvaluating) return; // 音が鳴る前のタメの間に重複して処理が走るのを防ぐ
+        if (this.isEvaluating || this.hasAnsweredCorrectly) return; 
 
         this.isEvaluating = true;
         const q = this.gameQueue[this.currentIndex];
@@ -401,7 +399,6 @@ class App {
         
         const isCorrect = (inputVal === correctVal);
 
-        // 判定画面への文字表示（ここまでは即座に行うことで操作感の心地よさをキープ）
         if(isCorrect) {
             document.getElementById('result-msg').innerHTML = '<span style="color:var(--accent)">○ Correct</span>';
             this.answerCount++;
@@ -416,15 +413,15 @@ class App {
             document.getElementById('realtime-score').innerText = `${this.correctCount} / ${this.answerCount}`;
         }
 
-        // ご要望の「音が出るまでのタメ（間）」を演出するためのディレイ（400ms = 0.4秒）
         setTimeout(() => {
             if(isCorrect) {
                 this.playSE('correct');
                 this.speak(q.en);
+                this.isEvaluating = false; 
             } else {
                 this.playSE('wrong');
+                this.isEvaluating = false; 
             }
-            this.isEvaluating = false; // 音が鳴り終わるタイミングでフラグをリセット
         }, 400);
     }
 
@@ -515,13 +512,24 @@ class App {
         this.isGivenUp = false;
         this.hasAnsweredCorrectly = false;
         this.isEvaluating = false;
+        
         document.getElementById('screen-game').classList.add('hidden');
         document.getElementById('view-time-result').classList.add('hidden');
         document.getElementById('screen-index').classList.remove('hidden');
         document.getElementById('header-back').classList.remove('visible');
         document.getElementById('timer-box').classList.add('hidden');
         document.getElementById('realtime-score').classList.add('hidden');
-        document.getElementById('mode-select').selectedIndex = 0;
+        
+        const modes = ['mode-select', 'lang-select', 'pos-select', 'grade-select', 'count-select'];
+        modes.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.selectedIndex = 0;
+        });
+
+        document.getElementById('pos-select').innerHTML = '<option value="" disabled selected>選択してください</option>';
+        document.getElementById('grade-select').innerHTML = '<option value="" disabled selected>選択してください</option>';
+        document.getElementById('count-select').innerHTML = '<option value="" disabled selected>選択してください</option>';
+
         this.hideRows(['row-lang','row-pos','row-grade','row-count']);
     }
 }
