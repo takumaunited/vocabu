@@ -148,14 +148,14 @@ class App {
         this.synth = window.speechSynthesis;
         this.timer = null; this.correctCount = 0; this.answerCount = 0;
         this.isGivenUp = false;
+        this.hasAnsweredCorrectly = false; // 変更点：現在の問題で既に正解したかを判定するフラグ
+        this.audioCtx = null; // 変更点：効果音用のオーディオコンテキスト
         this.posFull = { "名":"名詞","動":"動詞","形":"形容詞","副":"副詞","前":"前置詞","接":"接続詞","代":"代名詞","助":"助動詞","連":"連語" };
         window.addEventListener('DOMContentLoaded', () => this.init());
     }
 
-    // 変更点：外部のCSVファイルを非同期（async/await）で読み込むよう修正
     async init() { 
         try {
-            // dataフォルダ内の words.csv を読み込む（末尾にタイムスタンプを付与して強力にキャッシュを回避）
             const response = await fetch(`data/words.csv?v=${Date.now()}`);
             if (!response.ok) {
                 throw new Error('CSVファイルの読み込みに失敗しました。パスやファイル名、大文字小文字を確認してください。');
@@ -165,7 +165,7 @@ class App {
         } catch (error) {
             console.error(error);
             alert(error.message);
-            return; // データの読み込みに失敗した場合は初期化を中断
+            return;
         }
 
         const master = document.getElementById('master-input');
@@ -182,6 +182,57 @@ class App {
             if (e.key === 'Enter') (this.currentMode === 'card') ? this.flipCard() : this.checkTyping();
         });
         this.setDiff('easy'); this.updateSoundUI();
+    }
+
+    // 変更点：ピコピコ風の効果音（正解・不正解）を生成するメソッド
+    playSE(type) {
+        if (this.isMuted) return;
+        try {
+            if (!this.audioCtx) {
+                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            const ctx = this.audioCtx;
+            if (type === 'correct') {
+                // ピンポーン音（高いシからミへ上がるイメージ）
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                const now = ctx.currentTime;
+                osc.frequency.setValueAtTime(987.77, now); // シ
+                osc.frequency.setValueAtTime(1318.51, now + 0.1); // ミ
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (type === 'wrong') {
+                // ブブーー音（低い濁った音）
+                const osc1 = ctx.createOscillator();
+                const osc2 = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc1.type = 'sawtooth';
+                osc2.type = 'sawtooth';
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(ctx.destination);
+                
+                const now = ctx.currentTime;
+                osc1.frequency.setValueAtTime(140, now);
+                osc2.frequency.setValueAtTime(143, now); // わずかにずらして濁らせる
+                
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                
+                osc1.start(now); osc2.start(now);
+                osc1.stop(now + 0.3); osc2.stop(now + 0.3);
+            }
+        } catch (e) {
+            console.error("SE play failed", e);
+        }
     }
 
     parseCSV(text) {
@@ -292,6 +343,7 @@ class App {
     loadQuestion() {
         if(this.gameQueue.length === 0) return;
         this.isGivenUp = false; 
+        this.hasAnsweredCorrectly = false; // 変更点：新問題の開始時に正解フラグをリセット
         const q = this.gameQueue[this.currentIndex];
         const meta = document.getElementById('q-meta');
         
@@ -333,20 +385,30 @@ class App {
         });
     }
 
+    // 変更点：効果音追加およびタイムアタック時のEnter連打二重正解を防止
     checkTyping() {
         if (this.isGivenUp) return;
+        // タイムアタックかつ、すでに正解済みの場合は何もしない
+        if (this.currentMode === 'timeattack' && this.hasAnsweredCorrectly) return;
+
         const q = this.gameQueue[this.currentIndex];
         const master = document.getElementById('master-input');
-        this.answerCount++;
+        
         const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
         const inputVal = normalize(master.value);
         const correctVal = normalize(q.en);
+        
         if(inputVal === correctVal) {
             document.getElementById('result-msg').innerHTML = '<span style="color:var(--accent)">○ Correct</span>';
+            this.answerCount++;
             this.correctCount++; 
+            this.hasAnsweredCorrectly = true; // 正解フラグを立てる
+            this.playSE('correct'); // 正解音
             this.speak(q.en);
         } else {
             document.getElementById('result-msg').innerHTML = '<span style="color:var(--wrong)">× Wrong</span>';
+            this.answerCount++;
+            this.playSE('wrong'); // 不正解音
         }
         if(this.currentMode === 'timeattack') {
             document.getElementById('realtime-score').innerText = `${this.correctCount} / ${this.answerCount}`;
@@ -438,6 +500,7 @@ class App {
         this.gameQueue = [];
         this.currentIndex = 0;
         this.isGivenUp = false;
+        this.hasAnsweredCorrectly = false;
         document.getElementById('screen-game').classList.add('hidden');
         document.getElementById('view-time-result').classList.add('hidden');
         document.getElementById('screen-index').classList.remove('hidden');
