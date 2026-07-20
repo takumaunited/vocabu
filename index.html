@@ -1,4 +1,4 @@
-<!-- Vocabu v39.5.26 -->
+<!-- Vocabu v39.7.0 -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -85,7 +85,7 @@
     <header class="app-header">
         <button id="header-back" class="btn-back" onclick="app.backToIndex()">Index</button>
         <div class="app-logo">Vocabu</div>
-        <div class="outer-version">v39.5.26</div>
+        <div class="outer-version">v39.7.0</div>
     </header>
 
     <div id="screen-index" class="screen">
@@ -94,7 +94,8 @@
             <div id="row-lang" class="select-row hidden-row"><span class="select-label">言 語</span><select id="lang-select" class="custom-select" onchange="app.onStep(2)"><option value="" disabled selected>選択してください</option><option value="EN">英語 → 日本語</option><option value="JP">日本語 → 英語</option></select></div>
             <div id="row-pos" class="select-row hidden-row"><span class="select-label">品 詞</span><select id="pos-select" class="custom-select" onchange="app.onStep(3)"></select></div>
             <div id="row-grade" class="select-row hidden-row"><span class="select-label">学 年</span><select id="grade-select" class="custom-select" onchange="app.onStep(4)"></select></div>
-            <div id="row-count" class="select-row hidden-row"><span class="select-label" id="count-label">問題数</span><select id="count-select" class="custom-select" onchange="app.onStep(5)"></select></div>
+            <div id="row-unit" class="select-row hidden-row"><span class="select-label">Unit</span><select id="unit-select" class="custom-select" onchange="app.onStep(5)"></select></div>
+            <div id="row-count" class="select-row hidden-row"><span class="select-label" id="count-label">問題数</span><select id="count-select" class="custom-select" onchange="app.onStep(6)"></select></div>
             <button id="index-start-btn" class="start-btn" onclick="app.startGame()">START</button>
         </div>
     </div>
@@ -154,6 +155,22 @@ class App {
         this.audioCtx = null;
         this.isEvaluating = false; 
         this.posFull = { "名":"名詞","動":"動詞","形":"形容詞","副":"副詞","前":"前置詞","接":"接続詞","代":"代名詞","助":"助動詞","連":"連語" };
+        
+        // Unitグループ定義の初期化
+        this.unitGroups = {
+            "Unit 1": ["U1-1", "U1-2", "U1-3", "SaL1"],
+            "Unit 2": ["U2-1", "U2-2", "U2-3", "SaL2"],
+            "Unit 3": ["U3-1", "U3-2", "U3-3", "SaL3"],
+            "Unit 4": ["U4-1", "U4-2", "U4-3", "SaL4", "SA1"],
+            "Unit 5": ["U5-1", "U5-2", "U5-RT"],
+            "Unit 6": ["U6-1", "U6-2", "U6-RT", "RLE2", "GfC5"],
+            "Unit 7": ["U7-1", "U7-2", "U7-RT", "RLE3"],
+            "Unit 8": ["U8-1", "U8-2", "U8-RT", "RLE4", "SA2"],
+            "Unit 9": ["U9-1", "U9-2", "U9-RT", "RLE5"],
+            "Unit 10": ["U10-1", "U10-2", "U10-RT", "SA3"],
+            "Let's Read": ["LR"]
+        };
+        
         window.addEventListener('DOMContentLoaded', () => this.init());
     }
 
@@ -188,6 +205,18 @@ class App {
             if (e.key === 'Enter') (this.currentMode === 'card') ? this.flipCard() : this.checkTyping();
         });
         this.setDiff('easy'); this.updateSoundUI();
+    }
+
+    // 与えられたCSV上のunit文字列がどのグループ名に属するかを判定する関数
+    getGroupNameOfUnit(unitStr) {
+        if (!unitStr) return "その他";
+        const target = unitStr.trim();
+        for (const [groupName, matchArray] of Object.entries(this.unitGroups)) {
+            if (matchArray.includes(target)) {
+                return groupName;
+            }
+        }
+        return "その他";
     }
 
     initFaviconTheme() {
@@ -263,7 +292,7 @@ class App {
     parseCSV(text) {
         const lines = text.trim().split('\n').slice(1);
         this.db = lines.map(line => {
-            const parts = []; let current = ""; let inQuotes = false;
+            const parts = []; let current = ""; let inQuotes = !1;
             for(let char of line) {
                 if(char === '"') inQuotes = !inQuotes;
                 else if(char === ',' && !inQuotes) { parts.push(current); current = ""; }
@@ -278,13 +307,14 @@ class App {
     onStep(step) {
         this.currentMode = document.getElementById('mode-select').value;
         if (step === 1) {
-            this.hideRows(['row-lang','row-pos','row-grade','row-count']);
+            this.hideRows(['row-lang','row-pos','row-grade','row-unit','row-count']);
             document.getElementById('count-label').innerText = (this.currentMode === 'timeattack') ? "時 感" : "問題数";
             if (this.currentMode === 'card') this.showRow('row-lang'); else { this.renderPos(); this.showRow('row-pos'); }
         } else if (step === 2) { this.renderPos(); this.showRow('row-pos'); }
         else if (step === 3) { this.renderGrade(); this.showRow('row-grade'); }
-        else if (step === 4) { this.renderCount(); this.showRow('row-count'); }
-        else if (step === 5) document.getElementById('index-start-btn').classList.add('visible');
+        else if (step === 4) { this.renderUnit(); this.showRow('row-unit'); }
+        else if (step === 5) { this.renderCount(); this.showRow('row-count'); }
+        else if (step === 6) document.getElementById('index-start-btn').classList.add('visible');
     }
 
     showRow(id) { document.getElementById(id).classList.remove('hidden-row'); }
@@ -294,19 +324,24 @@ class App {
         let f = [...this.db];
         const pos = document.getElementById('pos-select').value;
         const gd = document.getElementById('grade-select').value;
+        const utGroup = document.getElementById('unit-select').value;
+        
         if(pos && pos !== 'ALL') f = f.filter(i => (this.posFull[i.pos]||i.pos) === pos);
         if(gd && gd !== 'ALL') f = f.filter(i => i.grade == gd);
+        
+        // グループ名による絞り込みの実行
+        if(utGroup && utGroup !== 'ALL') {
+            f = f.filter(i => this.getGroupNameOfUnit(i.unit) === utGroup);
+        }
         return f;
     }
 
     renderPos() {
         const sel = document.getElementById('pos-select');
-        const gd = document.getElementById('grade-select').value;
-        let base = (gd && gd !== 'ALL') ? this.db.filter(i => i.grade == gd) : this.db;
-        const posList = [...new Set(base.map(i => this.posFull[i.pos] || i.pos))];
-        sel.innerHTML = '<option value="" disabled selected>選択してください</option><option value="ALL">すべて ('+base.length+'語)</option>';
+        sel.innerHTML = '<option value="" disabled selected>選択してください</option><option value="ALL">すべて ('+this.db.length+'語)</option>';
+        const posList = [...new Set(this.db.map(i => this.posFull[i.pos] || i.pos))];
         posList.forEach(p => {
-            const count = base.filter(i => (this.posFull[i.pos]||i.pos) === p).length;
+            const count = this.db.filter(i => (this.posFull[i.pos]||i.pos) === p).length;
             sel.innerHTML += `<option value="${p}">${p} (${count}語)</option>`;
         });
     }
@@ -320,6 +355,35 @@ class App {
             const count = base.filter(i => i.grade == g).length;
             if(count > 0) sel.innerHTML += `<option value="${g}">${g}年 (${count}語)</option>`;
         });
+    }
+
+    renderUnit() {
+        const sel = document.getElementById('unit-select');
+        const pos = document.getElementById('pos-select').value;
+        const gd = document.getElementById('grade-select').value;
+        
+        let base = [...this.db];
+        if(pos && pos !== 'ALL') base = base.filter(i => (this.posFull[i.pos]||i.pos) === pos);
+        if(gd && gd !== 'ALL') base = base.filter(i => i.grade == gd);
+        
+        sel.innerHTML = '<option value="" disabled selected>選択してください</option><option value="ALL">すべて ('+base.length+'語)</option>';
+        
+        // 定義した定義順（Unit 1〜10、Let's Readの並び）でループ生成
+        const order = ["Unit 1", "Unit 2", "Unit 3", "Unit 4", "Unit 5", "Unit 6", "Unit 7", "Unit 8", "Unit 9", "Unit 10", "Let's Read"];
+        
+        order.forEach(groupName => {
+            // 現在の品詞・学年フィルター内において、このグループに属する英単語数を計算
+            const count = base.filter(i => this.getGroupNameOfUnit(i.unit) === groupName).length;
+            if(count > 0) {
+                sel.innerHTML += `<option value="${groupName}">${groupName} (${count}語)</option>`;
+            }
+        });
+        
+        // もし定義外の文字が入っていた場合のセーフティ用（「その他」枠）
+        const otherCount = base.filter(i => this.getGroupNameOfUnit(i.unit) === "その他").length;
+        if(otherCount > 0) {
+            sel.innerHTML += `<option value="その他">その他 (${otherCount}語)</option>`;
+        }
     }
 
     renderCount() {
@@ -551,7 +615,7 @@ class App {
         document.getElementById('timer-box').classList.add('hidden');
         document.getElementById('realtime-score').classList.add('hidden');
         
-        const modes = ['mode-select', 'lang-select', 'pos-select', 'grade-select', 'count-select'];
+        const modes = ['mode-select', 'lang-select', 'pos-select', 'grade-select', 'unit-select', 'count-select'];
         modes.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.selectedIndex = 0;
@@ -559,9 +623,10 @@ class App {
 
         document.getElementById('pos-select').innerHTML = '<option value="" disabled selected>選択してください</option>';
         document.getElementById('grade-select').innerHTML = '<option value="" disabled selected>選択してください</option>';
+        document.getElementById('unit-select').innerHTML = '<option value="" disabled selected>選択してください</option>';
         document.getElementById('count-select').innerHTML = '<option value="" disabled selected>選択してください</option>';
 
-        this.hideRows(['row-lang','row-pos','row-grade','row-count']);
+        this.hideRows(['row-lang','row-pos','row-grade','row-unit','row-count']);
     }
 }
 
