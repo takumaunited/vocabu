@@ -1,4 +1,4 @@
-<!-- Vocabu v39.8.0 -->
+<!-- Vocabu v39.9.0 -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -12,7 +12,6 @@
             --silver: #e0e0e0; --font-gray: #808080; --dark-gray: #444;
             --timer-coral: #FFABAB;
             --mint-green: #A0FFC3;
-            --meta-silver: #c0c0c0;
         }
         body { margin: 0; padding: 0; background: #fff; color: #333; font-family: 'Kosugi', sans-serif; font-weight: 400; height: 100vh; overflow: hidden; touch-action: manipulation; }
         .main-layout { display: flex; flex-direction: column; align-items: center; height: 100vh; padding: 0 20px; box-sizing: border-box; }
@@ -23,7 +22,7 @@
         .btn-back { background: none; border: none; cursor: pointer; color: var(--font-gray); font-size: 0.95rem; min-width: 80px; font-family: 'Oswald'; visibility: hidden; padding: 0; text-align: left; line-height: 1; font-weight: 500; transition: color 0.2s; }
         .btn-back:hover { color: var(--accent); }
         .btn-back.visible { visibility: visible; }
-        .outer-version { font-family: 'Oswald'; font-size: 0.95rem; color: #ccc; min-width: 80px; text-align: right; line-height: 1; }
+        .outer-version { font-family: 'Oswald'; font-size: 0.95rem; color: var(--font-gray); min-width: 80px; text-align: right; line-height: 1; }
 
         /* Main Container */
         .game-main-container { width: 100%; max-width: 1100px; height: 380px; position: relative; background: var(--whitesmoke); border: 2px solid var(--silver); box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
@@ -62,14 +61,18 @@
         .master-typing-input { position: absolute; z-index: 100; background: none; text-align: center; font-family: 'Outfit'; font-weight: 500; outline: none; border: none; }
         .master-typing-input.hard-mode { border-bottom: 3px solid #ccc; min-width: 400px; height: 55px; font-size: 2.8rem; }
         
-        .footer-left, .footer-right { flex: 2; display: flex; align-items: center; }
+        .footer-left { flex: 3; display: flex; align-items: center; gap: 20px; }
         .footer-center { flex: 1; display: flex; justify-content: center; align-items: center; gap: 25px; }
-        .footer-right { justify-content: flex-end; gap: 25px; }
-        .q-meta { font-size: 0.82rem; color: var(--meta-silver); font-weight: 700; margin: 0; white-space: nowrap; font-family: 'Oswald', sans-serif; letter-spacing: 0.3px; }
+        .footer-right { flex: 2; display: flex; justify-content: flex-end; align-items: center; gap: 25px; }
+        .q-meta { font-size: 0.82rem; color: var(--font-gray); font-weight: 700; margin: 0; white-space: nowrap; font-family: 'Oswald', sans-serif; letter-spacing: 0.3px; }
         
-        .tool-btn { background: none; border: none; color: var(--font-gray); cursor: pointer; font-size: 0.95rem; font-family: 'Oswald'; padding: 0; transition: color 0.2s; }
+        .tool-btn { background: none; border: none; color: var(--font-gray); cursor: pointer; font-size: 0.95rem; font-family: 'Oswald'; padding: 0; transition: color 0.2s; outline: none; }
         .tool-btn:hover { color: var(--accent); }
         .btn-active { box-shadow: 0 4px 0 0 var(--accent); color: var(--dark-gray); }
+        
+        /* Shuffle Button Custom */
+        .btn-shuffle { color: var(--font-gray); }
+        .btn-shuffle:hover, .btn-shuffle.active { color: var(--accent); }
 
         .sound-wrapper { display: flex; align-items: center; gap: 8px; font-family: 'Oswald'; font-size: 0.95rem; position: relative; color: var(--font-gray); }
         .sound-opt { cursor: pointer; position: relative; z-index: 1; transition: color 0.2s; }
@@ -85,7 +88,7 @@
     <header class="app-header">
         <button id="header-back" class="btn-back" onclick="app.backToIndex()">Index</button>
         <div class="app-logo">Vocabu</div>
-        <div class="outer-version">v39.8.0</div>
+        <div class="outer-version">v39.9.0</div>
     </header>
 
     <div id="screen-index" class="screen">
@@ -123,7 +126,10 @@
             <div id="nav-right" class="overlay-nav right"><span class="nav-text" onclick="app.next()">NEXT</span></div>
         </div>
         <div class="footer-row">
-            <div class="footer-left"><p id="q-meta" class="q-meta"></p></div>
+            <div class="footer-left">
+                <p id="q-meta" class="q-meta"></p>
+                <button id="shuffle-btn" class="tool-btn btn-shuffle" onclick="app.toggleShuffle()">Shuffle</button>
+            </div>
             <div class="footer-center">
                 <button id="btn-easy" class="tool-btn" onclick="app.setDiff('easy')">Easy</button>
                 <button id="btn-hard" class="tool-btn" onclick="app.setDiff('hard')">Hard</button>
@@ -147,6 +153,7 @@ class App {
     constructor() {
         this.db = []; this.gameQueue = []; this.currentIndex = 0;
         this.currentMode = 'card'; this.difficulty = 'easy'; this.isMuted = false;
+        this.isShuffle = false;
         this.synth = window.speechSynthesis;
         this.timer = null; this.correctCount = 0; this.answerCount = 0;
         this.isGivenUp = false;
@@ -156,7 +163,6 @@ class App {
         this.isEvaluating = false; 
         this.posFull = { "名":"名詞","動":"動詞","形":"形容詞","副":"副詞","前":"前置詞","接":"接続詞","代":"代名詞","助":"助動詞","連":"連語" };
         
-        // 学年別のUnitグループ定義（Word Roomは除外するためここに含まれないものは自動で消えます）
         this.unitGroupsByGrade = {
             "1": {
                 "Unit 0": ["U0", "SaL0"],
@@ -217,9 +223,7 @@ class App {
 
         try {
             const response = await fetch(`data/words.csv?v=${Date.now()}`);
-            if (!response.ok) {
-                throw new Error('CSVファイルの読み込みに失敗しました。');
-            }
+            if (!response.ok) throw new Error('CSVファイルの読み込みに失敗しました。');
             const csvText = await response.text();
             this.parseCSV(csvText);
         } catch (error) {
@@ -245,58 +249,38 @@ class App {
         this.setDiff('easy'); this.updateSoundUI();
     }
 
-    // 学年とCSVのunit文字列から所属グループ名を判定する関数（正規化対応・Word Room除外）
     getGroupName(grade, unitStr) {
         if (!unitStr) return "IGNORE";
         const rawTarget = unitStr.trim();
+        if (rawTarget.toUpperCase().includes("WR")) return "IGNORE";
         
-        // Word Room(WR○)は無条件で除外対象とする
-        if (rawTarget.toUpperCase().includes("WR")) {
-            return "IGNORE";
-        }
-        
-        // 比較のためにスペース除去・小文字化・括弧の中身を除去した簡易コードも用意
         const normalize = (s) => s.replace(/\s+/g, '').replace(/\(.*?\)/g, '').toLowerCase();
         const normTarget = normalize(rawTarget);
-
         const targetGrades = (grade && grade !== 'ALL') ? [String(grade)] : ["1", "2", "3"];
 
         for (const g of targetGrades) {
             const groups = this.unitGroupsByGrade[g];
             if (!groups) continue;
-            
             for (const [groupName, matchArray] of Object.entries(groups)) {
-                // 1. 完全一致チェック
-                if (matchArray.includes(rawTarget)) {
-                    return groupName;
-                }
-                // 2. 正規化一致チェック（LR1(p.44) などの表記揺れ対策）
+                if (matchArray.includes(rawTarget)) return groupName;
                 for (const item of matchArray) {
-                    if (normalize(item) === normTarget) {
-                        return groupName;
-                    }
+                    if (normalize(item) === normTarget) return groupName;
                 }
             }
         }
-        return "IGNORE"; // どの定義にも合致しない場合は非表示・除外
+        return "IGNORE";
     }
 
     initFaviconTheme() {
         const updateIconForce = (e) => {
             const oldIcons = document.querySelectorAll("link[rel*='icon']");
             oldIcons.forEach(el => el.remove());
-            
             const newLink = document.createElement('link');
-            newLink.rel = 'icon';
-            newLink.type = 'image/svg+xml';
-            
+            newLink.rel = 'icon'; newLink.type = 'image/svg+xml';
             const fillColor = e.matches ? '%23ffffff' : '%2324292e';
-            
             newLink.href = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><path fill="${fillColor}" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.44c-2.22.48-2.69-1.07-2.69-1.07-.36-.92-.88-1.17-.88-1.17-.72-.48.05-.47.05-.47.8.06 1.22.84 1.22.84.71 1.22 1.88.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.18c0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>`;
-            
             document.getElementsByTagName('head')[0].appendChild(newLink);
         };
-        
         const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
         updateIconForce(darkModeQuery);
         darkModeQuery.addEventListener('change', updateIconForce);
@@ -305,50 +289,24 @@ class App {
     playSE(type) {
         if (this.isMuted) return;
         try {
-            if (!this.audioCtx) {
-                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
+            if (!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const ctx = this.audioCtx;
-            
             if (type === 'correct') {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'sine';
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                
+                const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination);
                 const now = ctx.currentTime;
-                osc.frequency.setValueAtTime(987.77, now);
-                osc.frequency.setValueAtTime(1318.51, now + 0.08);
-                gain.gain.setValueAtTime(0.4, now); 
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-                
-                osc.start(now);
-                osc.stop(now + 0.45);
+                osc.frequency.setValueAtTime(987.77, now); osc.frequency.setValueAtTime(1318.51, now + 0.08);
+                gain.gain.setValueAtTime(0.4, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+                osc.start(now); osc.stop(now + 0.45);
             } else if (type === 'wrong') {
-                const osc1 = ctx.createOscillator();
-                const osc2 = ctx.createOscillator();
-                const gain = ctx.createGain();
-                
-                osc1.type = 'sawtooth';
-                osc2.type = 'sawtooth';
-                osc1.connect(gain);
-                osc2.connect(gain);
-                gain.connect(ctx.destination);
-                
+                const osc1 = ctx.createOscillator(); const osc2 = ctx.createOscillator(); const gain = ctx.createGain();
+                osc1.type = 'sawtooth'; osc2.type = 'sawtooth'; osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
                 const now = ctx.currentTime;
-                osc1.frequency.setValueAtTime(140, now);
-                osc2.frequency.setValueAtTime(143, now);
-                
-                gain.gain.setValueAtTime(0.15, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-                
-                osc1.start(now); osc2.start(now);
-                osc1.stop(now + 0.3); osc2.stop(now + 0.3);
+                osc1.frequency.setValueAtTime(140, now); osc2.frequency.setValueAtTime(143, now);
+                gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc1.start(now); osc2.start(now); osc1.stop(now + 0.3); osc2.stop(now + 0.3);
             }
-        } catch (e) {
-            console.error("SE play failed", e);
-        }
+        } catch (e) { console.error("SE play failed", e); }
     }
 
     parseCSV(text) {
@@ -391,13 +349,10 @@ class App {
         if(pos && pos !== 'ALL') f = f.filter(i => (this.posFull[i.pos]||i.pos) === pos);
         if(gd && gd !== 'ALL') f = f.filter(i => i.grade == gd);
         
-        // グループ名による絞り込みを実行（同時にIGNORE判定されたものを取り除く）
         f = f.filter(i => {
             const groupName = this.getGroupName(i.grade, i.unit);
             if (groupName === "IGNORE") return false;
-            if (utGroup && utGroup !== 'ALL') {
-                return groupName === utGroup;
-            }
+            if (utGroup && utGroup !== 'ALL') return groupName === utGroup;
             return true;
         });
         return f;
@@ -433,31 +388,23 @@ class App {
         if(pos && pos !== 'ALL') base = base.filter(i => (this.posFull[i.pos]||i.pos) === pos);
         if(gd && gd !== 'ALL') base = base.filter(i => i.grade == gd);
         
-        // プルダウンに並べるべきグループ順序を定義に基づき動的に収集
         const targetGrades = (gd && gd !== 'ALL') ? [String(gd)] : ["1", "2", "3"];
         let orderedGroups = [];
-        
         targetGrades.forEach(g => {
             const groups = this.unitGroupsByGrade[g];
             if (groups) {
                 Object.keys(groups).forEach(groupName => {
-                    if (!orderedGroups.includes(groupName)) {
-                        orderedGroups.push(groupName);
-                    }
+                    if (!orderedGroups.includes(groupName)) orderedGroups.push(groupName);
                 });
             }
         });
         
-        // 「すべて」の合計語数を計算（IGNORE=Word Room等を除外したもの）
         const totalValidCount = base.filter(i => this.getGroupName(i.grade, i.unit) !== "IGNORE").length;
-        
         sel.innerHTML = '<option value="" disabled selected>選択してください</option><option value="ALL">すべて ('+totalValidCount+'語)</option>';
         
         orderedGroups.forEach(groupName => {
             const count = base.filter(i => this.getGroupName(i.grade, i.unit) === groupName).length;
-            if(count > 0) {
-                sel.innerHTML += `<option value="${groupName}">${groupName} (${count}語)</option>`;
-            }
+            if(count > 0) sel.innerHTML += `<option value="${groupName}">${groupName} (${count}語)</option>`;
         });
     }
 
@@ -476,7 +423,14 @@ class App {
 
     startGame() {
         let f = this.getFilteredData();
-        this.gameQueue = f.sort(() => Math.random() - 0.5);
+        
+        // シャッフル状態に応じた配列の初期並び替え
+        if (this.isShuffle) {
+            this.gameQueue = f.sort(() => Math.random() - 0.5);
+        } else {
+            this.gameQueue = f.sort((a, b) => parseInt(a.no) - parseInt(b.no));
+        }
+
         const ct = document.getElementById('count-select').value;
         if(ct !== 'ALL' && this.currentMode !== 'timeattack') this.gameQueue = this.gameQueue.slice(0, parseInt(ct));
 
@@ -502,6 +456,40 @@ class App {
         }
         this.currentIndex = 0; this.loadQuestion();
         this.updateSoundUI();
+        this.updateShuffleUI();
+    }
+
+    toggleShuffle() {
+        this.isShuffle = !this.isShuffle;
+        this.updateShuffleUI();
+
+        if (this.gameQueue.length === 0) return;
+
+        // 現在表示中の単語を退避し、それ以外の残りのキューを並び替える
+        const currentWord = this.gameQueue[this.currentIndex];
+        let remain = this.gameQueue.filter((_, idx) => idx !== this.currentIndex);
+
+        if (this.isShuffle) {
+            remain = remain.sort(() => Math.random() - 0.5);
+        } else {
+            remain = remain.sort((a, b) => parseInt(a.no) - parseInt(b.no));
+        }
+
+        // 新しいキューの先頭に現在の単語を固定し、インデックスを0へリセット
+        this.gameQueue = [currentWord, ...remain];
+        this.currentIndex = 0;
+        
+        // メタテキストの更新
+        const meta = document.getElementById('q-meta');
+        if (meta) {
+            const posName = this.posFull[currentWord.pos] || currentWord.pos;
+            meta.innerText = `${this.currentIndex + 1} / ${this.gameQueue.length} | No.${currentWord.no} | ${posName} | ${currentWord.grade}年 | P.${currentWord.page} | Unit ${currentWord.unit}`;
+        }
+    }
+
+    updateShuffleUI() {
+        const btn = document.getElementById('shuffle-btn');
+        if (btn) btn.classList.toggle('active', this.isShuffle);
     }
 
     loadQuestion() {
@@ -567,13 +555,10 @@ class App {
 
         if(isCorrect) {
             document.getElementById('result-msg').innerHTML = '<span style="color:var(--accent)">○ Correct</span>';
-            this.answerCount++;
-            this.correctCount++; 
-            this.hasAnsweredCorrectly = true;
+            this.answerCount++; this.correctCount++; this.hasAnsweredCorrectly = true;
         } else {
             document.getElementById('result-msg').innerHTML = '<span style="color:var(--wrong)">× Wrong</span>';
-            this.answerCount++;
-            this.hasEvaluatedWrong = true;
+            this.answerCount++; this.hasEvaluatedWrong = true;
         }
 
         if(this.currentMode === 'timeattack') {
@@ -581,17 +566,11 @@ class App {
         }
 
         setTimeout(() => {
-            if(isCorrect) {
-                this.playSE('correct');
-                this.speak(q.en);
-            } else {
-                this.playSE('wrong');
-            }
+            if(isCorrect) { this.playSE('correct'); this.speak(q.en); }
+            else { this.playSE('wrong'); }
         }, 400);
 
-        setTimeout(() => {
-            this.isEvaluating = false; 
-        }, 450);
+        setTimeout(() => { this.isEvaluating = false; }, 450);
     }
 
     giveUp() {
@@ -603,9 +582,7 @@ class App {
         if(this.difficulty === 'easy') {
             master.value = [...q.en].filter(c => /[a-zA-Z0-9]/.test(c)).join('');
             this.syncEasyDisplay();
-        } else {
-            master.value = q.en;
-        }
+        } else { master.value = q.en; }
         this.speak(q.en);
     }
 
