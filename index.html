@@ -1,4 +1,4 @@
-<!-- Vocabu v39.7.0 -->
+<!-- Vocabu v39.8.0 -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -85,7 +85,7 @@
     <header class="app-header">
         <button id="header-back" class="btn-back" onclick="app.backToIndex()">Index</button>
         <div class="app-logo">Vocabu</div>
-        <div class="outer-version">v39.7.0</div>
+        <div class="outer-version">v39.8.0</div>
     </header>
 
     <div id="screen-index" class="screen">
@@ -156,19 +156,57 @@ class App {
         this.isEvaluating = false; 
         this.posFull = { "名":"名詞","動":"動詞","形":"形容詞","副":"副詞","前":"前置詞","接":"接続詞","代":"代名詞","助":"助動詞","連":"連語" };
         
-        // Unitグループ定義の初期化
-        this.unitGroups = {
-            "Unit 1": ["U1-1", "U1-2", "U1-3", "SaL1"],
-            "Unit 2": ["U2-1", "U2-2", "U2-3", "SaL2"],
-            "Unit 3": ["U3-1", "U3-2", "U3-3", "SaL3"],
-            "Unit 4": ["U4-1", "U4-2", "U4-3", "SaL4", "SA1"],
-            "Unit 5": ["U5-1", "U5-2", "U5-RT"],
-            "Unit 6": ["U6-1", "U6-2", "U6-RT", "RLE2", "GfC5"],
-            "Unit 7": ["U7-1", "U7-2", "U7-RT", "RLE3"],
-            "Unit 8": ["U8-1", "U8-2", "U8-RT", "RLE4", "SA2"],
-            "Unit 9": ["U9-1", "U9-2", "U9-RT", "RLE5"],
-            "Unit 10": ["U10-1", "U10-2", "U10-RT", "SA3"],
-            "Let's Read": ["LR"]
+        // 学年別のUnitグループ定義（Word Roomは除外するためここに含まれないものは自動で消えます）
+        this.unitGroupsByGrade = {
+            "1": {
+                "Unit 0": ["U0", "SaL0"],
+                "Unit 1": ["U1-1", "U1-2", "U1-3", "SaL1"],
+                "Unit 2": ["U2-1", "U2-2", "U2-3", "SaL2"],
+                "Unit 3": ["U3-1", "U3-2", "U3-3", "SaL3"],
+                "Unit 4": ["U4-1", "U4-2", "U4-3", "SaL4"],
+                "Stage Activity 1": ["SA1"],
+                "Unit 5": ["U5-1", "U5-2", "U5-RT"],
+                "Unit 6": ["U6-1", "U6-2", "U6-RT", "RLE2", "GfC5"],
+                "Unit 7": ["U7-1", "U7-2", "U7-RT", "RLE3"],
+                "Unit 8": ["U8-1", "U8-2", "U8-RT", "RLE4"],
+                "Stage Activity 2": ["SA2"],
+                "Unit 9": ["U9-1", "U9-2", "U9-RT", "RLE5"],
+                "Unit 10": ["U10-1", "U10-2", "U10-RT"],
+                "Stage Activity 3": ["SA3"],
+                "Let's Read": ["LR"]
+            },
+            "2": {
+                "Unit 0": ["U0"],
+                "Unit 1": ["U1-1", "U1-2", "U1-RT1", "R1-RT2"],
+                "Unit 2": ["U2-1", "U2-2", "U2-RT1", "R2-RT2", "RLE2"],
+                "Unit 3": ["U3-1", "U3-2", "U3-RT1", "R3-RT2"],
+                "Stage Activity 1": ["SA1"],
+                "Let's Read 1": ["LR1(p.44)", "LR1(p.45)", "LR1(p.46)", "LR1(p.47)", "LR1"],
+                "Unit 4": ["U4-1", "U4-2", "U4-RT1", "R4-RT2", "RLE4"],
+                "Unit 5": ["U5-1", "U5-2", "U5-RT1", "R5-RT2"],
+                "Unit 6": ["U6-1", "U6-2", "U6-RT1", "R6-RT2", "RLE6"],
+                "Stage Activity 2": ["SA2"],
+                "Let's Read 2": ["LR2(p.84)", "LR2(p.85)", "LR2(p.86)", "LR2"],
+                "Unit 7": ["U7-1", "U7-2", "U7-RT1", "R7-RT2", "RLE7"],
+                "Stage Activity 3": ["SA3"],
+                "Let's Read 3": ["LR3(p.104)", "LR3(p.105)", "LR3(p.106)", "LR3(p.107)", "LR3"]
+            },
+            "3": {
+                "Unit 0": ["U0"],
+                "Unit 1": ["U1-1", "U1-2", "U1-RT1", "U1-RT2"],
+                "Unit 2": ["U2-1", "U2-2", "U2-RT1", "U2-RT2"],
+                "Unit 3": ["U3-1", "U3-2", "U3-RT1", "U3-RT2", "RLE3"],
+                "Stage Activity 1": ["SA1"],
+                "Let's Read 1": ["LR1(p.46)", "LR1(p.47)", "LR1(p.48)", "LR1(p.49)", "LR1"],
+                "Unit 4": ["U4-1", "U4-2", "U4-RT1", "U4-RT2", "RLE4"],
+                "Unit 5": ["U5-1", "U5-2", "U5-RT1", "RLE5"],
+                "Stage Activity 2": ["SA2"],
+                "Unit 6": ["U6-1", "U6-2", "U6-RT1"],
+                "Stage Activity 3": ["SA3"],
+                "Let's Read 2": ["LR2(p.92)", "LR2(p.93)", "LR2(p.94)", "LR2"],
+                "Let's Read 3": ["LR2(p.96)", "LR2(p.97)", "LR2(p.98)", "LR2(p.99)"],
+                "Further Reading": ["Further Reading"]
+            }
         };
         
         window.addEventListener('DOMContentLoaded', () => this.init());
@@ -207,16 +245,40 @@ class App {
         this.setDiff('easy'); this.updateSoundUI();
     }
 
-    // 与えられたCSV上のunit文字列がどのグループ名に属するかを判定する関数
-    getGroupNameOfUnit(unitStr) {
-        if (!unitStr) return "その他";
-        const target = unitStr.trim();
-        for (const [groupName, matchArray] of Object.entries(this.unitGroups)) {
-            if (matchArray.includes(target)) {
-                return groupName;
+    // 学年とCSVのunit文字列から所属グループ名を判定する関数（正規化対応・Word Room除外）
+    getGroupName(grade, unitStr) {
+        if (!unitStr) return "IGNORE";
+        const rawTarget = unitStr.trim();
+        
+        // Word Room(WR○)は無条件で除外対象とする
+        if (rawTarget.toUpperCase().includes("WR")) {
+            return "IGNORE";
+        }
+        
+        // 比較のためにスペース除去・小文字化・括弧の中身を除去した簡易コードも用意
+        const normalize = (s) => s.replace(/\s+/g, '').replace(/\(.*?\)/g, '').toLowerCase();
+        const normTarget = normalize(rawTarget);
+
+        const targetGrades = (grade && grade !== 'ALL') ? [String(grade)] : ["1", "2", "3"];
+
+        for (const g of targetGrades) {
+            const groups = this.unitGroupsByGrade[g];
+            if (!groups) continue;
+            
+            for (const [groupName, matchArray] of Object.entries(groups)) {
+                // 1. 完全一致チェック
+                if (matchArray.includes(rawTarget)) {
+                    return groupName;
+                }
+                // 2. 正規化一致チェック（LR1(p.44) などの表記揺れ対策）
+                for (const item of matchArray) {
+                    if (normalize(item) === normTarget) {
+                        return groupName;
+                    }
+                }
             }
         }
-        return "その他";
+        return "IGNORE"; // どの定義にも合致しない場合は非表示・除外
     }
 
     initFaviconTheme() {
@@ -329,10 +391,15 @@ class App {
         if(pos && pos !== 'ALL') f = f.filter(i => (this.posFull[i.pos]||i.pos) === pos);
         if(gd && gd !== 'ALL') f = f.filter(i => i.grade == gd);
         
-        // グループ名による絞り込みの実行
-        if(utGroup && utGroup !== 'ALL') {
-            f = f.filter(i => this.getGroupNameOfUnit(i.unit) === utGroup);
-        }
+        // グループ名による絞り込みを実行（同時にIGNORE判定されたものを取り除く）
+        f = f.filter(i => {
+            const groupName = this.getGroupName(i.grade, i.unit);
+            if (groupName === "IGNORE") return false;
+            if (utGroup && utGroup !== 'ALL') {
+                return groupName === utGroup;
+            }
+            return true;
+        });
         return f;
     }
 
@@ -366,24 +433,32 @@ class App {
         if(pos && pos !== 'ALL') base = base.filter(i => (this.posFull[i.pos]||i.pos) === pos);
         if(gd && gd !== 'ALL') base = base.filter(i => i.grade == gd);
         
-        sel.innerHTML = '<option value="" disabled selected>選択してください</option><option value="ALL">すべて ('+base.length+'語)</option>';
+        // プルダウンに並べるべきグループ順序を定義に基づき動的に収集
+        const targetGrades = (gd && gd !== 'ALL') ? [String(gd)] : ["1", "2", "3"];
+        let orderedGroups = [];
         
-        // 定義した定義順（Unit 1〜10、Let's Readの並び）でループ生成
-        const order = ["Unit 1", "Unit 2", "Unit 3", "Unit 4", "Unit 5", "Unit 6", "Unit 7", "Unit 8", "Unit 9", "Unit 10", "Let's Read"];
+        targetGrades.forEach(g => {
+            const groups = this.unitGroupsByGrade[g];
+            if (groups) {
+                Object.keys(groups).forEach(groupName => {
+                    if (!orderedGroups.includes(groupName)) {
+                        orderedGroups.push(groupName);
+                    }
+                });
+            }
+        });
         
-        order.forEach(groupName => {
-            // 現在の品詞・学年フィルター内において、このグループに属する英単語数を計算
-            const count = base.filter(i => this.getGroupNameOfUnit(i.unit) === groupName).length;
+        // 「すべて」の合計語数を計算（IGNORE=Word Room等を除外したもの）
+        const totalValidCount = base.filter(i => this.getGroupName(i.grade, i.unit) !== "IGNORE").length;
+        
+        sel.innerHTML = '<option value="" disabled selected>選択してください</option><option value="ALL">すべて ('+totalValidCount+'語)</option>';
+        
+        orderedGroups.forEach(groupName => {
+            const count = base.filter(i => this.getGroupName(i.grade, i.unit) === groupName).length;
             if(count > 0) {
                 sel.innerHTML += `<option value="${groupName}">${groupName} (${count}語)</option>`;
             }
         });
-        
-        // もし定義外の文字が入っていた場合のセーフティ用（「その他」枠）
-        const otherCount = base.filter(i => this.getGroupNameOfUnit(i.unit) === "その他").length;
-        if(otherCount > 0) {
-            sel.innerHTML += `<option value="その他">その他 (${otherCount}語)</option>`;
-        }
     }
 
     renderCount() {
